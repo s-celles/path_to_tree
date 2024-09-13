@@ -1,7 +1,7 @@
 """
 This module creates a tree representation of the directory structure
 starting from a specified directory (or the current directory by default),
-using a nested defaultdict, and exports it as YAML.
+using a nested defaultdict, and exports it as YAML. It can optionally include files in the tree.
 """
 
 import os
@@ -46,9 +46,13 @@ def print_tree(d, indent=0):
         indent (int, optional): The indentation level for display. Defaults to 0.
     """
     for k, v in d.items():
-        print("  " * indent + str(k))
-        if isinstance(v, defaultdict):
-            print_tree(v, indent + 1)
+        if k != "_files":
+            print("  " * indent + str(k))
+            if isinstance(v, defaultdict):
+                print_tree(v, indent + 1)
+        else:
+            for file in v:
+                print("  " * indent + file)
 
 
 def defaultdict_to_dict(d):
@@ -66,7 +70,7 @@ def defaultdict_to_dict(d):
     return d
 
 
-def main(start_path, output_file):
+def main(start_path, output_file, include_files=True):
     """
     Main function that traverses the directory tree starting from the specified path,
     creates a representation as a nested dictionary, displays this representation,
@@ -75,6 +79,7 @@ def main(start_path, output_file):
     Args:
         start_path (str): The path to start the directory traversal from.
         output_file (str): The path to the output YAML file.
+        include_files (bool): Whether to include files in the tree structure. Defaults to True.
     """
     tree = nested_defaultdict()
     p = Path(start_path)
@@ -85,6 +90,8 @@ def main(start_path, output_file):
         current_dict = set_nested(tree, root_parts)
         for dir in dirs:
             current_dict[dir]  # Creates an empty defaultdict for each subdirectory
+        if include_files and files:
+            current_dict["_files"] = files
 
     print("Directory structure:")
     print_tree(tree)
@@ -96,7 +103,7 @@ def main(start_path, output_file):
     with open(output_file, "w") as f:
         yaml.dump(regular_dict, f, default_flow_style=False)
 
-    print(f"\nYAML representation exported to {output_file}")
+    print(f'\nYAML representation exported to "{output_file}"')
 
 
 if __name__ == "__main__":
@@ -115,6 +122,12 @@ if __name__ == "__main__":
         default="directory_structure.yaml",
         help="The output YAML file. Defaults to 'directory_structure.yaml' in the current directory.",
     )
+    parser.add_argument(
+        "-nf",
+        "--no-files",
+        action="store_true",
+        help="Exclude files from the tree structure. By default, files are included.",
+    )
     args = parser.parse_args()
 
-    main(args.path, args.output)
+    main(args.path, args.output, not args.no_files)
